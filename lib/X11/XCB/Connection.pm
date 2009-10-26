@@ -57,7 +57,7 @@ sub root {
     my $height = sum map { $_->rect->height } @{$screens};
 
     return X11::XCB::Window->new(
-        _conn => $self->conn,
+        _conn => $self,
         _mapped => 1, # root window is always mapped
         parent => 0,
         id => $self->conn->get_root_window(),
@@ -74,9 +74,8 @@ Returns the X11 input focus (a window ID).
 sub input_focus {
     my $self = shift;
 
-    my $conn = X11::XCB::Connection->conn;
-    my $cookie = $conn->get_input_focus();
-    my $reply = $conn->get_input_focus_reply($cookie->{sequence});
+    my $cookie = $self->get_input_focus();
+    my $reply = $self->get_input_focus_reply($cookie->{sequence});
 
     return $reply->{focus};
 }
