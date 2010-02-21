@@ -17,8 +17,17 @@ use autodie;
 use Data::Dumper;
 use File::Basename qw(basename);
 use List::Util qw(first);
+use List::MoreUtils qw(uniq);
 
 use XML::Simple qw(:strict);
+
+# reads in a whole file
+sub slurp {
+	open my $fh, '<', shift;
+	local $/;
+	<$fh>;
+}
+
 
 my $prefix = 'xcb_';
 
@@ -90,19 +99,20 @@ sub mangle($;$)
     Family_DECnet => 1,
     DECnet => 1
     );
-    my $name = shift;
-    my $clean = shift;
+    my ($name, $clean) = @_;
     my $mangled = '';
 
-    $mangled = $prefix unless ($clean);
+    $mangled = $prefix unless $clean;
 
-    if ($simple{$name}) {
-    $mangled .= lc($name);
-    } else {
+    # FIXME: eliminate this special case
+    if ($name =~ /^CUT_BUFFER/) {
+        return $name;
+    }
+
+    return $mangled . lc($name) if $simple{$name};
+
     while (length ($name)) {
-        $name =~ /^(.)(.*)$/;
-        my $char = $1;
-        my $next = $2;
+        my ($char, $next) = ($name =~ /^(.)(.*)$/);
 
         $mangled .= lc($char);
 
@@ -112,12 +122,12 @@ sub mangle($;$)
         $name =~ /^[[:alpha:]]\d/ ||
         $name =~ /^[[:upper:]][[:upper:]][[:lower:]]/)
         {
-        $mangled .= '_';
+            $mangled .= '_';
         }
 
         $name = $next;
     }
-    }
+
     return $mangled;
 }
 
@@ -305,10 +315,10 @@ sub do_requests($\%)
         push @param_names, $var->{'value-mask-name'};
         push @param_names, $var->{'value-list-name'};
         push @param_names, '...';
-        }
+    }
 
 
-    print OUT (join ',', @param_names);
+    print OUT (join ',', uniq @param_names);
     print OUT ")\n";
 
 
@@ -317,14 +327,16 @@ sub do_requests($\%)
 #       print OUT "    $cookie *cookie;\n";
 #   }
     print OUT "    XCBConnection *conn\n";
+
+    my @vars;
     foreach my $var (@{$req->{'field'}}) {
         my $type = get_vartype($var->{type});
         if ($type =~ /^xcb_/) {
             $type =~ s/^xcb_/XCB/;
         }
-        print OUT "    $type ";
-        print OUT $var->{'name'}."\n";
+        push @vars, "$type $var->{name}";
     }
+
     if (defined($req->{'list'})) {
         foreach my $var (@{$req->{'list'}}) {
         if (!defined($var->{'fieldref'}) && !defined($var->{'op'}) && !defined($var->{'value'})) {
@@ -337,27 +349,21 @@ sub do_requests($\%)
             $type =~ s/_t$//g;
         }
 
-        if ($type eq 'int') {
-            print OUT "    intArray *";
-        } else {
-            # We use char* instead of void* to be able to use pack() in the perl part
-            if ($type eq 'void') {
-                $type = 'char';
-            }
-            print OUT "    $type *";
-        }
+        $type = 'intArray' if ($type eq 'int');
+        # We use char* instead of void* to be able to use pack() in the perl part
+        $type = 'char' if ($type eq 'void');
 
-        print OUT $var->{'name'}."\n";
+        push @vars, "$type * $var->{name}";
         }
     }
     if (defined($req->{'valueparam'})) {
         foreach my $var (@{$req->{'valueparam'}}) {
-        print OUT "    ".get_vartype($var->{'value-mask-type'})." ";
-        print OUT $var->{'value-mask-name'}."\n";
-        print OUT "    intArray *".$var->{'value-list-name'}."\n";
+            push @vars, get_vartype($var->{'value-mask-type'}) . " $var->{'value-mask-name'}";
+            push @vars, "intArray * $var->{'value-list-name'}";
         }
     }
-    print OUT "\n";
+
+    print OUT join("\n", uniq @vars) . "\n";
 
     print OUT "  PREINIT:\n    HV * hash;\n    $cookie cookie;\n";
 
@@ -395,39 +401,36 @@ sub do_requests($\%)
         print OUT "cookie = ";
     }
     print OUT mangle($req->{'name'})."(";
-    my $glob = 'conn->conn, ';
-    foreach my $var (@{$req->{'field'}}) {
-        $glob .= $var->{'name'};
-        $glob .= ", ";
-    }
+
+    my @params = ('conn->conn');
+
+    map { push @params, $_->{name} } @{$req->{field}};
+
     if (defined($req->{'list'})) {
         foreach my $var (@{$req->{'list'}}) {
-        if (!defined($var->{'fieldref'}) && !defined($var->{'op'}) && !defined($var->{'value'})) {
-            $glob .= $var->{'name'}.'_len';
-            $glob .= ", ";
-        }
-        my $type = $var->{type};
-        $type = $exacttype{$type} if (defined($exacttype{$type}));
-        if ((my $type_name, my $int_len) = ($type =~ /(INT|CARD)(8|16|32)/)) {
-            $glob .= " (const uint" . $int_len . "_t*)";
-        }
-        if ($var->{type} eq 'BYTE') {
-            $glob .= " (const uint8_t*)";
-        }
-        $glob .= $var->{'name'};
-        $glob .= ", ";
+            if (!defined($var->{'fieldref'}) && !defined($var->{'op'}) && !defined($var->{'value'})) {
+                push @params, $var->{name} . '_len';
+            }
+            my $type = $var->{type};
+            $type = $exacttype{$type} if (defined($exacttype{$type}));
+            my $t = '';
+            if ((my $type_name, my $int_len) = ($type =~ /(INT|CARD)(8|16|32)/)) {
+                $t = " (const uint" . $int_len . "_t*)";
+            }
+            if ($var->{type} eq 'BYTE') {
+                $t = " (const uint8_t*)";
+            }
+            push @params, $t . $var->{name};
         }
     }
     if (defined($req->{'valueparam'})) {
         foreach my $var (@{$req->{'valueparam'}}) {
-        $glob .= $var->{'value-mask-name'};
-        $glob .= ", ";
-        $glob .= $var->{'value-list-name'};
-        $glob .= ", ";
+            push @params, $var->{'value-mask-name'};
+            push @params, $var->{'value-list-name'};
         }
     }
-    chop $glob; chop $glob;  # removing trailing comma
-    print OUT "$glob);\n\n";
+
+    print OUT join(', ', uniq @params) . ");\n\n";
 
     print OUT "    hash = newHV();\n    hv_store(hash, \"sequence\", strlen(\"sequence\"), newSViv(cookie.sequence), 0);\n";
     print OUT "    RETVAL = hash;\n";
@@ -659,6 +662,7 @@ sub generate {
 
     print OUTTM "XCBConnection * T_PTROBJ\n";
     print OUTTM "intArray * T_ARRAY\n";
+    print OUTTM "X11_XCB_ICCCM_WMHints * T_PTROBJ\n";
 
     print OUT << 'eot';
 #include "EXTERN.h"
@@ -666,6 +670,7 @@ sub generate {
 #include "XSUB.h"
 #include <xcb/xcb.h>
 #include <xcb/xinerama.h>
+#include <xcb/xcb_icccm.h>
 #include "wrapper.h"
 
 #include "ppport.h"
@@ -680,6 +685,7 @@ eot
     print OUT << 'eot';
 
 typedef struct my_xcb_conn XCBConnection;
+typedef xcb_wm_hints_t X11_XCB_ICCCM_WMHints;
 typedef int intArray;
 
 intArray *intArrayPtr(int num) {
@@ -689,6 +695,12 @@ intArray *intArrayPtr(int num) {
 
         return array;
 }
+eot
+
+    my $ext = slurp('XCB_util.inc');
+    print OUT $ext;
+
+    print OUT << 'eot';
 
 MODULE = X11::XCB PACKAGE = X11::XCB
 

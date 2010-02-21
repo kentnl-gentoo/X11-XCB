@@ -8,6 +8,7 @@ use X11::XCB::Atom;
 use X11::XCB::Color;
 use X11::XCB qw(:all);
 use Data::Dumper;
+use v5.10;
 
 # A valid window type is every string, which, appended to _NET_WM_WINDOW_TYPE_
 # returns an existing atom.
@@ -28,10 +29,13 @@ has 'id' => (is => 'ro', isa => 'Int', lazy_build => 1);
 has 'parent' => (is => 'ro', isa => 'Int', required => 1);
 has '_rect' => (is => 'ro', isa => 'X11::XCB::Rect', required => 1, init_arg => 'rect', coerce => 1);
 has 'type' => (is => 'rw', isa => 'X11::XCB::Atom', coerce => 1, trigger => \&_update_type);
+has 'transient_for' => (is => 'rw', isa => 'X11::XCB::Window', trigger => \&_update_transient_for);
+has 'client_leader' => (is => 'rw', isa => 'X11::XCB::Window', trigger => \&_update_client_leader);
 has 'override_redirect' => (is => 'ro', isa => 'Int', default => 0);
 has 'background_color' => (is => 'ro', isa => 'X11::XCB::Color', coerce => 1, default => undef);
 has 'name' => (is => 'rw', isa => 'Str', trigger => \&_update_name);
 has 'fullscreen' => (is => 'rw', isa => 'Int', trigger => \&_update_fullscreen);
+has '_hints' => (is => 'rw', isa => 'ArrayRef', default => sub { [ ] });
 has '_conn' => (is => 'ro', required => 1);
 has '_mapped' => (is => 'rw', isa => 'Int', default => 0);
 has '_created' => (is => 'rw', isa => 'Int', default => 0);
@@ -59,11 +63,24 @@ containing this window but the first one under the root window in hierarchy).
 =cut
 sub rect {
     my $self = shift;
+    my $conn = $self->_conn;
+
+    my $arg = shift;
+
+    if ($arg) {
+        # Set the given geometry
+        my $mask = CONFIG_WINDOW_X |
+                   CONFIG_WINDOW_Y |
+                   CONFIG_WINDOW_WIDTH |
+                   CONFIG_WINDOW_HEIGHT;
+        my @values = ($arg->x, $arg->y, $arg->width, $arg->height);
+        $conn->configure_window($self->id, $mask, @values);
+        $conn->flush;
+        return;
+    }
 
     # Return the planned geometry if we’re not yet mapped
     return $self->_rect unless $self->_mapped;
-
-    my $conn = $self->_conn;
 
     # Get the relative geometry
     my $cookie = $conn->get_geometry($self->id);
@@ -131,7 +148,10 @@ sub _create {
 
     $self->_created(1);
 
-    $self->_update_type if (defined($self->type));
+    $self->_update_type if defined($self->type);
+    $self->_update_name if defined($self->name);
+    $self->_update_transient_for if defined($self->transient_for);
+    $self->_update_client_leader if defined($self->client_leader);
 }
 
 =head2 attributes
@@ -297,6 +317,48 @@ sub _update_type {
     $self->_conn->flush;
 }
 
+sub _update_transient_for {
+    my $self = shift;
+    my $conn = $self->_conn;
+    my $atomname = $conn->atom(name => 'WM_TRANSIENT_FOR');
+    my $atomtype = $conn->atom(name => 'WINDOW');
+
+    # If we are not mapped, this property will be set when creating the window
+    return unless ($self->_created);
+
+    $self->_conn->change_property(
+        PROP_MODE_REPLACE,
+        $self->id,
+        $atomname->id,
+        $atomtype->id,
+        32,         # 32 bit integer
+        1,
+        pack('L', $self->transient_for)
+    );
+    $self->_conn->flush;
+}
+
+sub _update_client_leader {
+    my $self = shift;
+    my $conn = $self->_conn;
+    my $atomname = $conn->atom(name => 'WM_CLIENT_LEADER');
+    my $atomtype = $conn->atom(name => 'WINDOW');
+
+    # If we are not mapped, this property will be set when creating the window
+    return unless ($self->_created);
+
+    $self->_conn->change_property(
+        PROP_MODE_REPLACE,
+        $self->id,
+        $atomname->id,
+        $atomtype->id,
+        32,         # 32 bit integer
+        1,
+        pack('L', $self->client_leader)
+    );
+    $self->_conn->flush;
+}
+
 =head2 create_child(options)
 
 Creates a new C<X11::XCB::Window> as a child window of the current window.
@@ -310,6 +372,51 @@ sub create_child {
         parent => $self->id,
         @_,
     );
+}
+
+=head2 add_hint($hint)
+
+Adds the given C<$hint> (one of "urgency") to the window’s set of hints.
+
+=cut
+sub add_hint {
+    my ($self, $hint) = @_;
+
+    # check if $self->_hints contains the hint already, then do nothing
+    return if ($self->_hints ~~ $hint);
+
+    # else add the hint to array
+    push @{$self->_hints}, $hint;
+
+    $self->_update_hints;
+}
+
+=head2 delete_hint($hint)
+
+Opposite of L<add_hint>.
+
+=cut
+sub delete_hint {
+    my ($self, $hint) = @_;
+
+    @{$self->_hints} = grep { !/$hint/ } @{$self->_hints};
+
+    $self->_update_hints;
+}
+
+sub _update_hints {
+    my ($self) = @_;
+
+    my $hints = X11::XCB::ICCCM::WMHints->new;
+
+    for my $hint (@{$self->_hints}) {
+        if ($hint eq 'urgency') {
+            $hints->set_urgency();
+        }
+    }
+
+    X11::XCB::ICCCM::set_wm_hints($self->_conn->conn, $self->id, $hints);
+    $self->_conn->flush;
 }
 
 1
