@@ -1,3 +1,4 @@
+# requires Module::Install::XSUtil
 use inc::Module::Install;
 use FileHandle;
 use IO::Handle;
@@ -40,8 +41,6 @@ test_requires 'Test::Deep';
 
 requires 'Moose';
 requires 'Try::Tiny';
-
-use_test_base;
 
 # XXX check for minimum xcb-version (1.2)
 my $pc = 'ExtUtils::PkgConfig';

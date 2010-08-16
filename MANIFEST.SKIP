@@ -9,3 +9,4 @@
 ^t/pod-coverage.t$
 \.typedefs$
 ^typemap$
+^X11-XCB-*

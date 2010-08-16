@@ -131,6 +131,11 @@ sub _create {
         push @values, 1;
     }
 
+    $mask |= CW_EVENT_MASK;
+    push @values, EVENT_MASK_STRUCTURE_NOTIFY |      
+                                  EVENT_MASK_SUBSTRUCTURE_REDIRECT | 
+                                                            EVENT_MASK_SUBSTRUCTURE_NOTIFY;
+
     $self->_conn->create_window(
             WINDOW_CLASS_COPY_FROM_PARENT,
             $self->id,
@@ -261,7 +266,7 @@ sub _update_fullscreen {
                 $event{sequence},
                 $event{window},
                 $event{type},
-                _NET_WM_STATE_TOGGLE,
+                ($self->fullscreen ? _NET_WM_STATE_ADD : _NET_WM_STATE_REMOVE),
                 $conn->atom(name => '_NET_WM_STATE_FULLSCREEN')->id,
                 0,
                 1, # normal application
@@ -277,7 +282,6 @@ sub _update_fullscreen {
         my $atomtype = $conn->atom(name => 'ATOM');
         my $atoms;
         if ($self->fullscreen) {
-            print "getting fs atom\n";
             my $atom = $conn->atom(name => '_NET_WM_STATE_FULLSCREEN');
             $atoms = pack('L', $atom->id);
         }
@@ -354,7 +358,7 @@ sub _update_client_leader {
         $atomtype->id,
         32,         # 32 bit integer
         1,
-        pack('L', $self->client_leader)
+        pack('L', $self->client_leader->id)
     );
     $self->_conn->flush;
 }
@@ -416,6 +420,32 @@ sub _update_hints {
     }
 
     X11::XCB::ICCCM::set_wm_hints($self->_conn->conn, $self->id, $hints);
+    $self->_conn->flush;
+}
+
+=head2 warp_pointer($x, $y)
+
+Moves the pointer to the offsets ($x, $y) relative to the origin of the
+window on which it is called. If $x and $y are undef, moves the pointer
+into the center of the window.
+
+=cut
+sub warp_pointer {
+    my ($self, $x, $y) = @_;
+
+    # If no coordinates were given, we warp the pointer into the center
+    if (!defined($x) and !defined($y)) {
+        my $rect = $self->rect;
+        $x = $rect->{width} / 2;
+        $y = $rect->{height} / 2;
+    }
+
+    # If just one coordinate was undef, we use 0
+    $x ||= 0;
+    $y ||= 0;
+
+    # TODO: s/0/XCB_NONE
+    $self->_conn->warp_pointer(0, $self->id, 0, 0, 0, 0, $x, $y);
     $self->_conn->flush;
 }
 
