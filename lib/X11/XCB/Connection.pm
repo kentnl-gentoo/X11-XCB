@@ -2,7 +2,6 @@ package X11::XCB::Connection;
 # passes all methods to the underlying XCBConnection.
 
 use Moose;
-use Data::Dumper;
 use X11::XCB qw(:all);
 use X11::XCB::Screen;
 use X11::XCB::Window;

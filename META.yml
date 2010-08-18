@@ -4,10 +4,9 @@ author:
   - 'Michael Stapelberg, <michael+xcb@stapelberg.de>'
 build_requires:
   ExtUtils::MakeMaker: 6.42
-  ExtUtils::ParseXS: 2.2
+  ExtUtils::ParseXS: 2.21
   Test::Deep: 0
   Test::More: 0
-  XSLoader: 0.08
 configure_requires:
   ExtUtils::MakeMaker: 6.42
   ExtUtils::PkgConfig: 0.00
@@ -15,7 +14,7 @@ configure_requires:
   XML::Simple: 0.00
   autodie: 0.00
 distribution_type: module
-generated_by: 'Module::Install version 1.00'
+generated_by: 'Module::Install version 0.95'
 license: perl
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.4.html
@@ -28,7 +27,8 @@ no_index:
 requires:
   Moose: 0
   Try::Tiny: 0
+  XSLoader: 0.1
   perl: 5.10.0
 resources:
   license: http://dev.perl.org/licenses/
-version: 0.01_004
+version: 0.01_006
