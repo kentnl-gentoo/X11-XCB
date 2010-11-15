@@ -6,6 +6,7 @@ use X11::XCB::Rect;
 use X11::XCB::Connection;
 use X11::XCB::Atom;
 use X11::XCB::Color;
+use X11::XCB::Sizehints;
 use X11::XCB qw(:all);
 use Data::Dumper;
 use v5.10;
@@ -35,6 +36,7 @@ has 'override_redirect' => (is => 'ro', isa => 'Int', default => 0);
 has 'background_color' => (is => 'ro', isa => 'X11::XCB::Color', coerce => 1, default => undef);
 has 'name' => (is => 'rw', isa => 'Str', trigger => \&_update_name);
 has 'fullscreen' => (is => 'rw', isa => 'Int', trigger => \&_update_fullscreen);
+has 'hints' => (is => 'rw', isa => 'X11::XCB::Sizehints', lazy_build => 1);
 has '_hints' => (is => 'rw', isa => 'ArrayRef', default => sub { [ ] });
 has '_conn' => (is => 'ro', required => 1);
 has '_mapped' => (is => 'rw', isa => 'Int', default => 0);
@@ -45,6 +47,18 @@ sub _build_id {
 
     return $self->_conn->generate_id();
 }
+
+sub _build_hints {
+    my $self = shift;
+
+    return X11::XCB::Sizehints->new(_conn => $self->_conn, window => $self->id);
+}
+
+=head1 NAME
+
+X11::XCB::Window - represents an X11 window
+
+=head1 METHODS
 
 =head2 rect
 
@@ -332,7 +346,7 @@ sub _update_transient_for {
         $atomtype->id,
         32,         # 32 bit integer
         1,
-        pack('L', $self->transient_for)
+        pack('L', $self->transient_for->id)
     );
     $self->_conn->flush;
 }
