@@ -33,10 +33,26 @@ has 'window_type' => (is => 'rw', isa => 'X11::XCB::Atom', coerce => 1, trigger 
 has 'transient_for' => (is => 'rw', isa => 'X11::XCB::Window', trigger => \&_update_transient_for);
 has 'client_leader' => (is => 'rw', isa => 'X11::XCB::Window', trigger => \&_update_client_leader);
 has 'override_redirect' => (is => 'ro', isa => 'Int', default => 0);
-has 'background_color' => (is => 'ro', isa => 'X11::XCB::Color', coerce => 1, default => undef);
+has 'background_color' => (is => 'ro', isa => 'X11::XCB::Color', coerce => 1, predicate => '_has_background_color');
 has 'name' => (is => 'rw', isa => 'Str', trigger => \&_update_name);
 has 'fullscreen' => (is => 'rw', isa => 'Int', trigger => \&_update_fullscreen);
+has 'border' => (is => 'rw', isa => 'Int', default => 0, trigger => \&_update_border);
 has 'hints' => (is => 'rw', isa => 'X11::XCB::Sizehints', lazy_build => 1);
+has 'event_mask' => (
+    is => 'ro',
+    isa => 'ArrayRef[Str]',
+    default => sub { [] },
+);
+has 'protocols' => (
+    traits => [ 'Array' ],
+    is => 'ro',
+    isa => 'ArrayRef[X11::XCB::Atom]',
+    default => sub { [] },
+    handles => {
+        no_protocols => 'is_empty',
+        protocols_count => 'count',
+    }
+);
 has '_hints' => (is => 'rw', isa => 'ArrayRef', default => sub { [ ] });
 has '_conn' => (is => 'ro', required => 1);
 has '_mapped' => (is => 'rw', isa => 'Int', default => 0);
@@ -134,7 +150,9 @@ sub _create {
     my $mask = 0;
     my @values;
 
-    if ($self->background_color) {
+    my $x = $self->_conn;
+
+    if ($self->_has_background_color) {
         $mask |= CW_BACK_PIXEL;
         push @values, $self->background_color->pixel;
     }
@@ -145,7 +163,19 @@ sub _create {
         push @values, 1;
     }
 
-    $self->_conn->create_window(
+    my @event_mask = @{$self->event_mask};
+    if (@event_mask > 0) {
+        $mask |= CW_EVENT_MASK;
+        my $value = 0;
+        for my $flag (@event_mask) {
+            my $name = 'EVENT_MASK_' . uc($flag);
+            no strict 'refs';
+            $value |= $name->();
+        }
+        push @values, $value;
+    }
+
+    $x->create_window(
             WINDOW_CLASS_COPY_FROM_PARENT,
             $self->id,
             $self->parent,
@@ -153,7 +183,7 @@ sub _create {
             $self->_rect->y,
             $self->_rect->width,
             $self->_rect->height,
-            0, # border
+            $self->border, # border
             $self->class,
             0, # copy visual TODO
             $mask,
@@ -166,6 +196,22 @@ sub _create {
     $self->_update_name if defined($self->name);
     $self->_update_transient_for if defined($self->transient_for);
     $self->_update_client_leader if defined($self->client_leader);
+
+    if (!$self->no_protocols) {
+        my $atomname = $x->atom(name => 'WM_PROTOCOLS');
+        my $atomtype = $x->atom(name => 'ATOM');
+        my $atoms = pack('L*', map { $_->id } @{$self->protocols});
+
+        $x->change_property(
+            PROP_MODE_REPLACE,
+            $self->id,
+            $atomname->id,
+            $atomtype->id,
+            32,
+            $self->protocols_count,
+            $atoms,
+        );
+    }
 }
 
 =head2 attributes
@@ -208,7 +254,20 @@ sub unmap {
 
     $self->_conn->unmap_window($self->id);
     $self->_conn->flush;
-    $self->_mapped(1);
+    $self->_mapped(0);
+}
+
+=head2 destroy
+
+Destroys the window completely
+
+=cut
+sub destroy {
+    my $self = shift;
+
+    $self->_conn->destroy_window($self->id);
+    $self->_conn->flush;
+    $self->_created(0);
 }
 
 =head2 mapped
@@ -229,6 +288,11 @@ sub mapped {
 
 sub _update_name {
     my $self = shift;
+
+    # Make sure the window is created first. _create calls _update_name, so we
+    # are done.
+    return $self->_create unless $self->_created;
+
     my $conn = $self->_conn;
     my $atomname = $conn->atom(name => '_NET_WM_NAME');
     my $atomtype = $conn->atom(name => 'UTF8_STRING');
@@ -306,6 +370,18 @@ sub _update_fullscreen {
         );
     }
 
+    $conn->flush;
+}
+
+sub _update_border {
+    my $self = shift;
+    my $conn = $self->_conn;
+
+    return unless $self->_created;
+
+    my $mask = CONFIG_WINDOW_BORDER_WIDTH;
+    my @values = ($self->border);
+    $conn->configure_window($self->id, $mask, @values);
     $conn->flush;
 }
 
