@@ -4,33 +4,31 @@ use 5.010000;
 use strict;
 use warnings;
 
-require Exporter;
+our $VERSION = '0.03';
 
-our @ISA = qw(Exporter);
+use Exporter 'import';
 
-# Items to export into callers namespace by default. Note: do not export
-# names by default without a very good reason. Use EXPORT_OK instead.
-# Do not simply export all your public functions/methods/constants.
-
-# This allows declaration	use X11::XCB ':all';
-# If you do not need this, moving things directly into @EXPORT or @EXPORT_OK
-# will save memory.
-our %EXPORT_TAGS = ( 'all' => [
-ENUMS_REPLACE_ME
-] );
-
-our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
-
-our @EXPORT = qw(
-	
-);
-
-our $VERSION = '0.02';
+our @EXPORT;
+our %EXPORT_TAGS = (all => []); # will be populated by XS
+*EXPORT_OK = $EXPORT_TAGS{all};
 
 require XSLoader;
 XSLoader::load('X11::XCB', $VERSION);
 
-# Preloaded methods go here.
+use XS::Object::Magic;
+
+sub new {
+    # XXX $screenp currently unused
+    my ($class, $display, $screenp) = @_;
+
+    $display //= '';
+
+    my $self = bless { display => $display }, $class;
+
+    $self->_connect_and_attach_struct;
+
+    return $self;
+}
 
 1;
 __END__
@@ -56,7 +54,7 @@ X11::XCB - perl bindings for libxcb
 
 These bindings wrap libxcb (a C library to speak with X11, in many cases better
 than Xlib in many aspects) and provide a nice object oriented interface to its
-methods (using Moose).
+methods (using Mouse).
 
 Please note that its aim is B<NOT> to provide yet another toolkit for creating
 graphical applications. It is a low-level method of communicating with X11. Use
@@ -88,10 +86,12 @@ The i3 window manager includes testcases which use X11::XCB.
 =head1 AUTHOR
 
 Michael Stapelberg, E<lt>michael+xcb@stapelberg.deE<gt>
+Maik Fischer, E<lt>maikf+xcb@qu.cxE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (C) 2009 by Michael Stapelberg
+Copyright (C) 2009-2011 Michael Stapelberg
+Copyright (C) 2011 Maik Fischer
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.10.0 or,

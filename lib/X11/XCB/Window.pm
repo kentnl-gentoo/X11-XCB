@@ -1,7 +1,7 @@
 package X11::XCB::Window;
 
-use Moose;
-use Moose::Util::TypeConstraints;
+use Mouse;
+use Mouse::Util::TypeConstraints;
 use X11::XCB::Rect;
 use X11::XCB::Connection;
 use X11::XCB::Atom;
@@ -504,7 +504,7 @@ sub _update_hints {
         }
     }
 
-    X11::XCB::ICCCM::set_wm_hints($self->_conn->conn, $self->id, $hints);
+    X11::XCB::ICCCM::set_wm_hints($self->_conn, $self->id, $hints);
     $self->_conn->flush;
 }
 
@@ -532,6 +532,21 @@ sub warp_pointer {
     # TODO: s/0/XCB_NONE
     $self->_conn->warp_pointer(0, $self->id, 0, 0, 0, 0, $x, $y);
     $self->_conn->flush;
+}
+
+=head2 state
+
+Returns the WM_STATE of this window (normal, withdrawn, iconic).
+
+=cut
+sub state {
+    my ($self) = @_;
+
+    my $conn = $self->_conn;
+    my $state = $conn->atom(name => 'WM_STATE')->id;
+    my $cookie = $conn->get_property(0, $self->id, $state, 0, 0, 8);
+    my $reply = $conn->get_property_reply($cookie->{sequence});
+    return unpack('L', $reply->{value});
 }
 
 1

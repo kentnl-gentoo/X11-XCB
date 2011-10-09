@@ -1,64 +1,86 @@
-# requires Module::Install::XSUtil
+use strict; use warnings;
+my (@configure_req, @author_req);
+BEGIN{
+  @configure_req = qw/
+    Module::Install
+    Module::Install::AuthorRequires
+    Module::Install::XSUtil
+    ExtUtils::PkgConfig
+    ExtUtils::Depends
+    XS::Object::Magic
+  /;
+  @author_req = qw/
+    XML::Simple
+    XML::Descent
+    Data::Dump
+    autodie
+  /;
+  my %ok;
+
+  die << '__' . (join "\n", grep { not $ok{$_} } keys %ok) . << '__'
+You're running me in author mode.
+Your fellow developer left a message to inform you
+to please install the following packages manually:
+
+__
+
+
+Afterwards you can use your CPAN client to install the remaining dependencies,
+build this module and install it (eg. `cpanm .`).
+__
+    if -e '.git'
+       and (@configure_req + @author_req)
+           != grep { $ok{$_} = eval "require $_; 1" } @configure_req, @author_req;
+}
+
 use inc::Module::Install;
-use FileHandle;
-use IO::Handle;
-use autodie;
-use lib '.';
-use _GenerateMyXS;
-
-use ExtUtils::PkgConfig;
-
-# reads in a whole file
-sub slurp {
-	open my $fh, '<', shift;
-	local $/;
-	<$fh>;
-}
-
-# spits out a file
-sub spit {
-	open my $fh, '>', shift;
-	$fh->print($_) for @_;
-}
-
 
 name 'X11-XCB';
-all_from 'lib/X11/XCB.pm.in';
+all_from 'lib/X11/XCB.pm';
 
-author_requires 'Module::Install::XSUtil';
+repository 'git://code.stapelberg.de/X11-XCB';
 
-# we need pkg-config to find xcb-proto when generating XS
-requires_external_bin 'pkg-config';
-
-cc_libs qw(xcb xcb-xinerama xcb-icccm);
-
-# needed for the XS-autogeneration
-configure_requires 'XML::Simple' => '0.00';
-configure_requires 'List::Util'  => '0.00';
-configure_requires 'autodie'     => '0.00';
-configure_requires 'ExtUtils::PkgConfig' => '0.00';
+requires 'Mouse';
+requires 'MouseX::NativeTraits';
+requires 'Try::Tiny';
 
 test_requires 'Test::More';
 test_requires 'Test::Deep';
 test_requires 'Test::Exception';
 
-requires 'Moose';
-requires 'Try::Tiny';
+configure_requires $_ for grep !/Module::Install/, @configure_req;
 
-# XXX check for minimum xcb-version (1.2)
-my $pc = 'ExtUtils::PkgConfig';
-my %xcb = $pc->find('xcb');
-my %xcb_xinerama = $pc->find('xcb-xinerama');
-my $xml_path = $pc->variable('xcb-proto', 'xcbincludedir');
+author_requires $_ for @author_req;
 
-_GenerateMyXS::generate($xml_path, qw/xproto.xml xinerama.xml/);
+use_ppport;
 
-print "Loading enums.list...\n";
-my $enums = slurp('enums.list');
-print "Replacing in lib/X11/XCB.pm.in\n";
-my $libfile = slurp('lib/X11/XCB.pm.in');
-$libfile =~ s/ENUMS_REPLACE_ME/qw($enums)/g;
+# -Wunused-value generates too much output to use it unconditionally
+cc_warnings if $ENV{X11_XCB_CC_WARNINGS};
 
-spit('lib/X11/XCB.pm', $libfile);
+require ExtUtils::PkgConfig;
+require ExtUtils::Depends;
 
-WriteAll;
+ExtUtils::PkgConfig->atleast_version('xcb', '1.2')
+  or die "You need at least libxcb version 1.2\n";
+
+my @xcb_libs = qw/xcb xcb-util xcb-xinerama xcb-icccm /;
+@xcb_libs == grep { eval { ExtUtils::PkgConfig->find($_); 1 } } @xcb_libs
+  or die "Perhaps you haven't installed the development versions?\n";
+
+cc_libs @xcb_libs;
+
+if ($Module::Install::AUTHOR or $ENV{X11_XCB_GENERATE}) {
+  eval { ExtUtils::PkgConfig->find('xcb-proto'); 1 }
+    or die "Please install xcb-proto to provide the required XML protocol definition\n";
+
+  require _GenerateMyXS;
+  _GenerateMyXS::generate();
+}
+
+WriteMakefile(
+  ExtUtils::Depends
+    ->new('X11::XCB', 'XS::Object::Magic')
+    ->get_makefile_vars
+);
+
+# vim:sw=2:sts=2:et
