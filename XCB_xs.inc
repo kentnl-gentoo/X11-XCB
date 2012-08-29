@@ -1852,21 +1852,20 @@ list_fonts_with_info(conn,max_names,pattern_len,pattern)
     RETVAL
 
 HV *
-set_font_path(conn,font_qty,path_len,path)
+set_font_path(conn,font_qty,font)
     XCBConnection *conn
     uint16_t font_qty
-    int path_len
-    char * path
+    XCBStr * font
   PREINIT:
     HV * hash;
     xcb_void_cookie_t cookie;
   CODE:
-    cookie = xcb_set_font_path(conn, font_qty, path_len, path);
+    cookie = xcb_set_font_path(conn, font_qty, font);
 
     hash = newHV();
     hv_store(hash, "sequence", strlen("sequence"), newSViv(cookie.sequence), 0);
     RETVAL = hash;
-
+    free(font);
   OUTPUT:
     RETVAL
 
@@ -3022,17 +3021,17 @@ change_hosts(conn,mode,family,address_len,address)
     uint8_t mode
     uint8_t family
     uint16_t address_len
-    char * address
+    intArray * address
   PREINIT:
     HV * hash;
     xcb_void_cookie_t cookie;
   CODE:
-    cookie = xcb_change_hosts(conn, mode, family, address_len, address);
+    cookie = xcb_change_hosts(conn, mode, family, address_len,  (const uint8_t*)address);
 
     hash = newHV();
     hv_store(hash, "sequence", strlen("sequence"), newSViv(cookie.sequence), 0);
     RETVAL = hash;
-
+    free(address);
   OUTPUT:
     RETVAL
 

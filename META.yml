@@ -4,19 +4,19 @@ author:
   - 'Michael Stapelberg, <michael+xcb@stapelberg.de>'
 build_requires:
   Devel::PPPort: 3.19
-  ExtUtils::MakeMaker: 6.42
-  ExtUtils::ParseXS: 2.21
+  ExtUtils::MakeMaker: 6.59
   Test::Deep: 0
   Test::Exception: 0
   Test::More: 0
 configure_requires:
   Devel::PPPort: 3.19
   ExtUtils::Depends: 0
-  ExtUtils::MakeMaker: 6.42
-  ExtUtils::PkgConfig: 0
+  ExtUtils::MakeMaker: 6.59
+  ExtUtils::ParseXS: 2.21
   XS::Object::Magic: 0
 distribution_type: module
-generated_by: 'Module::Install version 1.01'
+dynamic_config: 1
+generated_by: 'Module::Install version 1.06'
 license: perl
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.4.html
@@ -35,4 +35,4 @@ requires:
 resources:
   license: http://dev.perl.org/licenses/
   repository: git://code.stapelberg.de/X11-XCB
-version: 0.03
+version: 0.04

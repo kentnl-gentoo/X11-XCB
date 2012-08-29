@@ -1,0 +1,34 @@
+---
+abstract: 'perl bindings for libxcb'
+author:
+  - 'Michael Stapelberg, <michael+xcb@stapelberg.de>'
+build_requires:
+  Devel::PPPort: 3.19
+  ExtUtils::Depends: 0
+  ExtUtils::MakeMaker: 6.59
+  ExtUtils::ParseXS: 2.21
+  Test::Deep: 0
+  Test::Exception: 0
+  Test::More: 0
+  XS::Object::Magic: 0
+configure_requires:
+  ExtUtils::MakeMaker: 0
+distribution_type: module
+dynamic_config: 0
+generated_by: 'ExtUtils::MakeMaker version 6.57_05'
+license: perl
+meta-spec:
+  url: http://module-build.sourceforge.net/META-spec-v1.4.html
+  version: 1.4
+name: X11-XCB
+no_index:
+  directory:
+    - t
+    - inc
+requires:
+  Mouse: 0
+  MouseX::NativeTraits: 0
+  Try::Tiny: 0
+  XSLoader: 0.02
+  perl: 5.010
+version: 0.04

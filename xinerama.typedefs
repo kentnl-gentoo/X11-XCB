@@ -1,1 +1,0 @@
- typedef xcb_xinerama_screen_info_t XCBXinerama_screen_info;
