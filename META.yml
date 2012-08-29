@@ -35,4 +35,4 @@ requires:
 resources:
   license: http://dev.perl.org/licenses/
   repository: git://code.stapelberg.de/X11-XCB
-version: 0.04
+version: 0.05
