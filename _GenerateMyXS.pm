@@ -15,7 +15,7 @@ use strict; use warnings; use v5.10;
 use autodie;
 use Data::Dump;
 use List::Util qw(first);
-use Cwd qw(abs_path);
+use ExtUtils::PkgConfig;
 
 use XML::Simple qw(:strict);
 
@@ -224,6 +224,9 @@ sub do_requests {
 
     my (@param, %type, %xcb_cast, @cleanup);
 
+    # Skip documentation blocks.
+    on doc => sub {};
+
     on_field(\@param, \%type);
 
     # array length
@@ -410,7 +413,7 @@ sub do_enums {
 }
 
 sub generate {
-    my $path = abs_path() . '/bundled-libs/xcb-proto-1.7.1/src';
+    my $path = ExtUtils::PkgConfig->variable('xcb-proto', 'xcbincludedir');
     my @xcb_xmls = qw/xproto.xml xinerama.xml/;
 
     -d $path or die "$path: $!\n";

@@ -3,38 +3,41 @@ abstract: 'perl bindings for libxcb'
 author:
   - 'Michael Stapelberg, <michael+xcb@stapelberg.de>'
 build_requires:
-  Devel::PPPort: 3.19
-  ExtUtils::Depends: 0
-  ExtUtils::MakeMaker: 6.59
-  ExtUtils::ParseXS: 2.21
-  Test::Deep: 0
-  Test::Exception: 0
-  Test::More: 0
-  XS::Object::Magic: 0
+  Devel::PPPort: '3.19'
+  ExtUtils::Depends: '0'
+  ExtUtils::MakeMaker: '6.59'
+  ExtUtils::ParseXS: '3.18'
+  Test::Deep: '0'
+  Test::Exception: '0'
+  Test::More: '0'
+  XS::Object::Magic: '0'
 configure_requires:
-  Devel::PPPort: 3.19
-  ExtUtils::Depends: 0
-  ExtUtils::MakeMaker: 6.59
-  ExtUtils::ParseXS: 2.21
-  XS::Object::Magic: 0
+  Devel::PPPort: '3.19'
+  ExtUtils::Depends: '0'
+  ExtUtils::MakeMaker: '6.59'
+  ExtUtils::ParseXS: '2.21'
+  XS::Object::Magic: '0'
 dynamic_config: 0
-generated_by: 'Module::Install version 1.06, CPAN::Meta::Converter version 2.120921'
+generated_by: 'Module::Install version 1.06, CPAN::Meta::Converter version 2.133380'
 license: perl
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.4.html
-  version: 1.4
+  version: '1.4'
 name: X11-XCB
 no_index:
   directory:
     - inc
     - t
 requires:
-  Mouse: 0
-  MouseX::NativeTraits: 0
-  Try::Tiny: 0
-  XSLoader: 0.02
-  perl: 5.010
+  Data::Dump: '0'
+  Mouse: '0'
+  MouseX::NativeTraits: '0'
+  Try::Tiny: '0'
+  XML::Descent: '0'
+  XML::Simple: '0'
+  XSLoader: '0.02'
+  perl: '5.010'
 resources:
   license: http://dev.perl.org/licenses/
   repository: git://code.stapelberg.de/X11-XCB
-version: 0.08
+version: '0.09'
