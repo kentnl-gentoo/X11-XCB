@@ -1,0 +1,28 @@
+XCBConnection *             T_PTROBJ_MG
+intArray *                  T_ARRAY
+X11_XCB_ICCCM_WMHints *     T_PTROBJ
+X11_XCB_ICCCM_SizeHints *   T_PTROBJ
+uint8_t                     T_U_CHAR
+uint16_t                    T_U_SHORT
+uint32_t                    T_UV
+XCBChar2b * T_PTROBJ
+XCBPoint * T_PTROBJ
+XCBRectangle * T_PTROBJ
+XCBArc * T_PTROBJ
+XCBFormat * T_PTROBJ
+XCBVisualtype * T_PTROBJ
+XCBDepth * T_PTROBJ
+XCBScreen * T_PTROBJ
+XCBSetup_request * T_PTROBJ
+XCBSetup_failed * T_PTROBJ
+XCBSetup_authenticate * T_PTROBJ
+XCBSetup * T_PTROBJ
+XCBTimecoord * T_PTROBJ
+XCBFontprop * T_PTROBJ
+XCBCharinfo * T_PTROBJ
+XCBStr * T_PTROBJ
+XCBSegment * T_PTROBJ
+XCBColoritem * T_PTROBJ
+XCBRgb * T_PTROBJ
+XCBHost * T_PTROBJ
+XCBXinerama_screen_info * T_PTROBJ
