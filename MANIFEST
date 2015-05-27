@@ -33,10 +33,6 @@ t/02-screens.t
 t/03-color.t
 t/04-window.t
 t/X11-XCB.t
-typedefs.h
-typemap
 wrapper.h
-XCB.inc
 XCB.xs
 XCB_util.inc
-XCB_xs.inc
